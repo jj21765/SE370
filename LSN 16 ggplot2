@@ -1,0 +1,61 @@
+#Lesson 16: Data Visualization 1 
+#By: CPT Williams
+#February 202-
+
+#Load ggplot - remember how?
+
+library(ggplot2)
+#Load the mtcars data
+
+data(mtcars)
+View(mtcars)
+head(mtcars)
+
+#Make a scatterplot of mpg vs. disp, change color to red
+
+sp <- ggplot(mtcars, aes(mpg, disp)) + 
+  geom_point(color = "red")
+sp <- ggplot(mtcars, aes(mpg, disp, color = "red")) + 
+  geom_point()
+sp
+
+#since we already said what data set we are using, we dont have to use dollar signs
+#----------------------------------------------------------------------------------
+
+#Add a line to your scatterplot
+sp_1 <- sp + geom_line()
+sp + geom_vline( xintercept = 15, color = "purple")
+sp + geom_abline( slope = 2, intercept = 400)
+#here the intercept is just automatically the y intercept 
+sp_1
+
+#Add color = factor(cyl) within your aes() argument
+#what did this do?
+
+sp_2 <- ggplot(mtcars, aes(mpg, disp, color = factor(cyl))) + 
+  geom_point()
+sp_2
+             
+#Add the minimal theme to your plot
+
+sp_3 <- sp_2 + theme_minimal()
+sp_2 + theme_classic()
+sp_2 + theme_linedraw()
+
+#Add a title using ggtitle() - and center it!
+
+sp_3 + ggtitle("MPG vs Disp") + theme(plot.title = element_text( hjust = 0.5 ))
+
+#Make a bar chart showing the number of cars with 3, 4 and 5 gears
+#hint: you only need to define an x variable in aes()
+subset_1 <- subset(mtcars, mtcars$gear >= 3 & mtcars$gear <= 5)
+View(subset_1)
+bp <- ggplot(subset_1, aes(gear)) + geom_bar(color = "cyan", fill = "gold")
+bp
+
+#Use facet_grid() with the cyliner variable to create 3 versions of your bar plot from the above question - one for each value of cylinder
+
+bp + facet_grid(~cyl)
+#filtered by the number of cylinders, 4 6 and 8
+
+

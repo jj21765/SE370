@@ -1,0 +1,50 @@
+getwd()
+setwd("C:/Users/Lucas/Downloads/cb_2018_us_county_500k (1)")
+
+library(sf)
+
+county_shape <- st_read("cb_2018_us_county_500k.shp")
+county_shape <- county_shape %>%
+  mutate("fips" = COUNTYFP) %>%
+  mutate(fips = trimws(as.character(fips)))%>%
+  arrange(fips)
+
+setwd("C:/Users/Lucas/Downloads/cb_2018_us_county_within_cd116_500k (1)")
+county_shape1 <- st_read("cb_2018_us_county_within_cd116_500k.shp")
+county_shape1 <- county_shape
+
+setwd("C:/Users/Lucas/Downloads")
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(ggmap)
+covid <- read.csv("counties.csv")
+geoloc <- read.csv("Geocodes_USA_with_Counties.csv")
+zip <- read.csv("ZIP-COUNTY-FIPS_2010-03.csv")
+
+covid1 <- covid %>%
+  dplyr::select(fips,cases,deaths)
+
+zipp <- zip%>%
+  mutate("zip" = ZIP)
+geolocs <- geoloc %>%
+  mutate("zip" = ï..zip) %>%
+  dplyr::select(zip,latitude,longitude,county) %>%
+  na_if("") %>%
+  drop_na()
+geolocc <- distinct(geolocs,county,.keep_all = TRUE)
+geocode <- geolocc %>%
+  left_join(zipp, by = "zip") %>%
+  dplyr::select(latitude,longitude,zip,STCOUNTYFP,county)%>%
+  mutate("fips"=STCOUNTYFP)
+
+rona <- covid1 %>%
+  left_join(geocode, by = "fips")%>%
+  drop_na() %>%
+  mutate(fips = trimws(as.character(fips)))
+
+class(rona$fips)
+class(county_shape$fips)
+
+new <- rona %>%
+  left_join(county_shape, by = "fips") 

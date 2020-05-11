@@ -1,0 +1,82 @@
+#Lesson 11 - R nd RStudio Basics: Factors, DataFrames, and Lists
+#SE370 19-2
+
+######################################################################
+#Lesson Objectives:
+#1. Understand what a factor type is and how to use it
+#2. Create, manipulate, and sort a dataframe
+#3. Create and manipulate a list
+
+#What is a factor?
+?factor
+## a way to categorize data, can order them by precedence (value?)
+
+#create a vector called students of student performance  - A , B, B, C, D, F, A
+students <- c("A","B","B","C","D","F","A")
+
+#factor the vector and set the levels of the vector so that it is A > B > C > D > F
+students <- factor(students, levels = c("F","D","C","B","A"),ordered = TRUE)
+
+#find the summary of the vector
+summary(students)
+
+#load in the army_cars_small dataset as the variable "cars"
+getwd()
+cars <- read.csv('army_cars_small.csv')
+
+#look at the first 6 rows of the dataframe
+## we call this the head of the dataframe ##
+head(cars)
+
+#what kind of data are we working with? What is the structure?
+str(cars)
+
+#look at the makes using the $ notation
+cars$make
+
+#subset the dataframe on only toyota cars, save the variable to toyota
+
+toyota <- subset(cars, cars$make == "TOYOTA")
+#how many of each year group are there in the dataset? Save this as a variable toyota_years
+
+toyota_years <- table(toyota$year)
+toyota_years
+
+#order your toyota dataframe by mileage
+order(toyota$mileage)
+
+
+#Did you get what you expect? How do you fix it?
+
+#change the mileage variable to a numeric and try again
+toyota$mileage <- as.numeric(toyota$mileage)
+order(toyota$mileage)
+
+#How good do you feel about this data?
+
+
+#Combine the cars, toyota, and toyota years objects together into a list named car_list--- name each thing appropriately
+
+car_list2 <- list(cars,toyota,toyota_years)
+#CDT Lee, David gave verbal assistance in regards to what function to use to combine
+#objects into a list 
+
+#look at the structure of car_list
+str(car_list2)
+
+#now let's make a simple plot -- 
+#considering just the toyota cars, make a plot that shows us something about the mileage.
+#drop your plot into Teams (in the chat) then submit this .R file.
+plot.default(toyota$year,toyota$mileage,panel.first = grid(10,10),
+             pch = 0, cex = .5, col = "blue")
+plot(toyota,toyota$mileage)
+
+x <- toyota
+y <- toyota$mileage
+plot(x,y,main="Toyota Car Mileage")
+
+plot(toyota$year,toyota$mileage)
+
+#CDT Lee, David provided verbal assistance on what function to use to plot the toyotal mileage
+
+

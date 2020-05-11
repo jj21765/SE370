@@ -1,0 +1,123 @@
+#---Webscraping 2
+#-By: Esther Kang
+#-April 2020
+
+library(rvest)
+library(dplyr)
+
+#---Web crawling
+
+#code from last class to get all reuters stories:
+url <- 'https://www.reuters.com'
+
+page <- read_html(url)
+
+story <- page %>%
+  html_node('#topStory') %>%
+  html_node('.story-title') %>%
+  html_text(trim = TRUE)
+print(story)
+#get all stories on front page
+stories <- page %>%
+  html_nodes('.story-title') %>%
+  html_text(trim = TRUE)
+print(stories)
+#get links to top stories
+stories <- page %>%
+  html_nodes('.story-title') %>%
+  html_node('a') %>%
+  html_attr('href')
+
+stories <- stories[is.na(stories) == FALSE]
+print(stories)
+#Given a story, go get the text
+stories[1]
+
+base_url <- 'https://reuters.com'
+
+url <- paste0(base_url, stories[1])
+print(url)
+page <- read_html(url)
+print(page)
+full_text <- page %>%
+  html_node('.StandardArticleBody_body') %>%
+  html_nodes('p') %>%
+  html_text(trim = TRUE) %>%
+  paste(collapse = ' ')
+print(full_text)
+title <- page %>%
+  html_node('.ArticleHeader_headline') %>%
+  html_text(trim = TRUE)
+print(title)
+author <- page %>%
+  html_node('.BylineBar_byline') %>%
+  html_text(trim = TRUE)
+print(author)
+topic <- page %>%
+  html_node(".ArticleHeader_channel") %>%
+  html_text(trim = TRUE)
+print(topic)
+
+#we can write the same thing as a function
+
+getStory <- function(my_url){
+  base_url <- 'https://reuters.com'
+  
+  url <- paste0(base_url, my_url)
+  
+  page <- read_html(url)
+  
+  full_text <- page %>%
+    html_node('.StandardArticleBody_body') %>%
+    html_nodes('p') %>%
+    html_text(trim = TRUE) %>%
+    paste(collapse = ' ')
+  
+  title <- page %>%
+    html_node('.ArticleHeader_headline') %>%
+    html_text(trim = TRUE)
+  
+  author <- page %>%
+    html_node('.BylineBar_byline') %>%
+    html_text(trim = TRUE)
+  
+  topic <- page %>%
+    html_node(".ArticleHeader_channel") %>%
+    html_text(trim = TRUE)
+  
+  tmp <- data.frame(title = title, author = author, topic = topic, full_text)
+  
+  return(tmp)
+}
+install.packages('data.table')
+out <- lapply(stories, getStory)
+
+final <- data.table::rbindlist(out)
+
+final <- final %>%
+  filter(is.na(title) == FALSE)
+
+print(final)
+
+#---in-class exercise: web crawl stories yahoo news - specifically the US News section
+#-tips:
+#1. Scrape the full US news site from Yahoo
+#2. Scrape the links for the articles
+#3. HINT: as a simplifying assumption, only keep the articles that start with "https://news.yahoo.com..."
+#   The below code will select anything that has "num" in it from x - this will help you
+#   x <- c('num_1', '2', '3')
+#   x[grep('num', x)]
+#4. Scrape each article, extract the title, date, and main text.  Either use a loop or a function with lapply (shown above).
+#5. Store your results in a dataframe
+
+#1
+url <- 'https://news.yahoo.com/us'
+usa_page <- read_html(url)
+#2 
+links <- usa_page %>%
+  html_nodes('.simple-list Pstart(0)') %>%
+  html_node('a') %>%
+  html_attr('href')
+
+usalinks <- links[is.na(links)==FALSE]
+print(usalinks)

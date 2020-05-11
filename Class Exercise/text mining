@@ -1,0 +1,163 @@
+#---Text Mining II
+#-By: Esther Kang
+#-April 13, 2020
+
+install.packages("textdata")
+
+library(tidyverse)
+library(tidytext)
+library(textdata)
+
+#---Sentiment Analysis
+
+#---Load the yahoo data (if you need to do so)
+
+yahoo_df <- read_csv("yahoo_us_news_april_8_2020.csv")
+
+#---Tokenize the yahoo data and add source as a label
+yahoo_token <- yahoo_df %>%
+  unnest_tokens(word,full_text) %>%
+  mutate(source="yahoo")
+
+#---Get the afinn lexicon sentiment scores
+get_sentiments("afinn")
+
+
+#---Join afinn sentiment scores to your tokenized data
+yahoo_sent <- yahoo_token %>%
+  inner_join(get_sentiments('afinn'))
+view(yahoo_sent)
+
+#---Create a dply query that groups and summarises
+yahoo_sent_sum <- yahoo_sent %>%
+  group_by(title,source) %>%
+  summarise(title_score = sum(value))
+
+
+#---Plot it
+ggplot(yahoo_sent_sum, aes(reorder(title,title_score),title_score,fill=source)) + geom_col() +
+  coord_flip() + theme_minimal()
+
+
+#-----------------------------------------------------------------------------
+
+#---Bigrams
+
+reuters_df<- read.csv("reuters_df_april_8_2020.csv")
+
+#---tokenize the reuters data and add source as a label
+
+reuters_bigram <- reuters_df %>%
+  unnest_tokens(bigrams,text,token='ngrams',n=2)
+
+#---Count bigrams in reuters, what do you notice?
+reuters_bigram %>%
+  count(bigrams,sort=TRUE)
+
+
+#---Seperate for stop word removal
+reuters_bigrams_separated <- reuters_bigram %>% 
+  separate(bigrams,c('word1','word2'),sep=" ")
+
+
+#---Remove stop words
+reuters_bigrams_filtered <- reuters_bigrams_separated %>%
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word)
+
+
+#---Reunite
+reuters_bigrams_united <- reuters_bigrams_filtered %>%
+  unite(bigrams,word1,word2,sep=" ")
+
+
+#---New bigram counts:
+reuters_bigram_count <- reuters_bigrams_united %>%
+  count(bigrams,sort=TRUE)
+
+#---Plot freqs
+#---Plot the frequencies of reuters words
+reuters_bigram_count %>%
+  top_n(25,n) %>%
+  ggplot(aes(reorder(bigrams,n),n)) + geom_col() + coord_flip() + theme_minimal()+
+  ggtitle("Reuters Bigrams- Who is Le Miare")
+  
+
+#---What about sentiments? ---- have to do that by word
+reuters_bigrams_set <- reuters_bigrams_separated %>%
+  inner_join(get_sentiments("afinn"),by=c(word1="word")) %>%
+  inner_join(get_sentiments("afinn"),by=c(word2="word")) %>%
+  mutate(bigram_score=value.x*value.y)
+
+#---Combine and count
+reuters_bigrams_sent <- reuters_bigrams_set %>%
+  unite(bigrams,word1,word2,sep=" ") %>%
+  count(bigrams,bigram_score)
+
+
+#---Plot the bigrams by sentiment score
+ggplot(reuters_bigrams_sent,aes(reorder(bigrams,bigram_score), bigram_score,fill=2)) + 
+  geom_col() + coord_flip() + theme_minimal()
+
+
+#-----------------------------------------------------------------------------
+
+#---Now do sentiment analysis for reuters
+
+reuters_df <- read_csv("reuters_df_april_8_2020.csv")
+
+reuters_token <- reuters_df %>%
+  unnest_tokens(word,text) %>%
+  mutate(source="reuters")
+
+get_sentiments("afinn")
+
+reuters_sent <- reuters_token %>%
+  inner_join(get_sentiments('afinn'))
+
+reuters_sent_sum <- reuters_sent %>%
+  group_by(title,source) %>%
+  summarise(title_score = sum(value))
+
+ggplot(reuters_sent_sum, aes(reorder(title,title_score),title_score,fill=source)) + geom_col() +
+  coord_flip() + theme_minimal()
+
+
+
+# Find the bigrams for yahoo
+
+yahoo_bigram <- yahoo_df %>%
+  unnest_tokens(bigrams,full_text,token='ngrams',n=2)
+
+yahoo_bigram %>%
+  count(bigrams,sort=TRUE)
+
+yahoo_bigrams_separated <- yahoo_bigram %>% 
+  separate(bigrams,c('word1','word2'),sep=" ")
+
+yahoo_bigrams_filtered <- yahoo_bigrams_separated %>%
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word)
+
+yahoo_bigrams_united <- yahoo_bigrams_filtered %>%
+  unite(bigrams,word1,word2,sep=" ")
+
+yahoo_bigram_count <- yahoo_bigrams_united %>%
+  count(bigrams,sort=TRUE)
+
+yahoo_bigram_count %>%
+  top_n(25,n) %>%
+  ggplot(aes(reorder(bigrams,n),n)) + geom_col() + coord_flip() + theme_minimal()
+
+
+
+#---Bind Reuters and yahoo together and plot it
+total_sent_sum <- rbind(yahoo_sent_sum, reuters_sent_sum)
+
+ggplot(total_sent_sum, aes(reorder(title, title_score), title_score, fill = source))+
+  geom_col()+
+  coord_flip()+
+  theme_minimal()+
+  ggtitle("Who Is The Most Positive / Negative?")
+
+

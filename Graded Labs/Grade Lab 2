@@ -1,0 +1,184 @@
+---
+title: Graded Lab 2
+author: Esther Kang
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    theme: lumen
+---
+
+## Instructions
+This is a 150 point graded lab. You will submit this completed markdown in HTML as your final submission (naming convention: Section_LastName_Graded Lab 2.html). If you are unable to knit to HTML, you will submit the R script and recieve a 10% deduction. This is an open resource (not open friend) lab. You may use old work and the internet to complete it. Please change the author tag at the top of this file to your information. 
+
+
+```{r setup, include=FALSE}
+#This block sets up your markdown so that your code will print all nessassary libaries will be loaded. Do NOT change it. 
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+if (!require("nycflights13")) install.packages("nycflights13")
+
+```
+
+## General Questions (50 Points)
+<!-- You answer each questions by placesing in X in the appropriate bracket. Only one answer per question.  -->
+<!-- ### Example Question -->
+<!-- What is your favorite color? -->
+
+<!-- A[X]  Black and Gold   -->
+<!-- B[]   Blue    -->
+<!-- C[]   Red   -->
+<!-- D[]   Green   -->
+<!-- E[]   I'm colorblind     -->
+
+
+### Question 1
+In R what is true about factors (select all that apply)?
+
+A[]   Factors are never used by good R programmers.  
+B[]   Factors are the same as characters
+C[x]   Factors have a preset number of levels  
+D[x]   Factors are a discrete data type 
+
+
+### Question 2
+If you wanted to create 2 columns from a single column with a comma separated value (e.g., creating a Last and a First column from "Kloo, Ian"), what dplyr function should you use?
+
+A[x]   Separate  
+B[]   Subset  
+C[]   Mutate.at 
+D[]   Filter   
+E[]   Unite  
+
+
+### Question 3
+If you had a data set that looks like this table (from the tidyr package), what function would you use to put it in the tidy format?
+
+```{r, q3}
+head(tidyr::table4a, 2)
+```
+
+
+A[]   Pivot_wider  
+B[]   Fiter  
+C[]   Expand  
+D[x]   Spread    
+E[]   Pivot_longer    
+
+
+### Question 4
+Which statement is most correct?
+
+A[]   Tidyverse is the first package to create 2 dimensional data representations.
+B[]   There are many acceptable data formats, but tidy data is always the best. 
+C[]   Tidy data is the only acceptable data format in R.  
+D[]   Tidy data is great for data analysis, but other approaches may have performance or space advantages.   
+E[]   Tidy data is more of a state of mind than a set of data formats. 
+
+
+### Question 5
+If I wanted to compile a data set of flights from the nycflights13 data set that showed the flights and weather in a single data frame, what function and keys might I leverage?
+
+```{r, q5}
+head(nycflights13::weather, 2)
+head(nycflights13::flights, 2)
+```
+
+
+A[]   full_join; day and hour 
+B[]   vlookup; origin and year  
+C[]   left_join; year, month, day 
+D[]   mutate; origin and day  
+E[x]   left_join: origin, year, month, day, hour   
+  
+
+
+## Functional Coding (100 Points)
+
+This portion of the graded lab will assess your ability to write function code blocks, manipulate data, and create basic visualizations.
+
+### Question 6 (Funcations and Loops)
+
+Write a function that converts kg to lbs - there are 2.20462 lbs in 1 kg.
+
+Then, write a loop that applies your function to the "kg" vector created below and print out the results.  
+
+Print the first 10 results.
+
+```{r q6}
+#makes prices vector
+set.seed(123)
+kg <- rnorm(10, 100, 10)
+
+#Write function for q6 here
+convkg <- function(x){x*2.20462}
+
+#Write loop here
+for (i in 1:10){
+  print(convkg(i))
+}
+```
+
+
+
+### Question 7 (Joins)
+
+Someone messed up when they were pulling data from a database containing air strike data from the Vietnam War.  They ended up with 2 files (lines below will read them in).  
+
+1. Recombine the data
+2. Sort it by MSNDATE (ascending, which is the default)
+3. Print the first 5 rows and 5 columns.
+
+```{r q7, message = FALSE}
+#data for q7
+thor_sub_1 <- read_csv('thor_sub_1.csv')
+thor_sub_2 <- read_csv('thor_sub_2.csv')
+
+combined <- thor_sub_2 %>%
+  rename(thor_data_viet_id = THOR_DATA_VIET_ID) %>%
+  left_join(thor_sub_1, by = "thor_data_viet_id") %>%
+  arrange( MSNDATE ) 
+
+print(combined[1:5, 1:5])
+```
+
+
+### Question 8 (Manipulating Data)
+
+From the THOR data (read in below):
+
+1. Create a new column called country_service that is a space-separated combination of the country flying the mission and the military service.  
+2. Reduce down to only contain your new country_service column, the MSNDATE, and the THOR_DATA_VIET_ID.  
+3. Make all columns lowercase
+4. Print the first 5 rows.
+
+```{r, message = FALSE}
+thor <- read_csv('thor_vietnam_66.csv') %>%
+  mutate( country_service = paste(COUNTRYFLYINGMISSION," ",MILSERVICE)) %>%
+  select( country_service, MSNDATE, THOR_DATA_VIET_ID ) %>%
+  rename( thor_data_viet_id = THOR_DATA_VIET_ID, msndate = MSNDATE)
+
+print(thor[1:5,])
+
+```
+
+
+### Question 9 (Plotting)
+
+Using the THOR data, create this plot:
+
+```{r}
+knitr::include_graphics('plot_example.png')
+```
+
+
+
+```{r, message = FALSE}
+thor <- read_csv('thor_vietnam_66.csv') 
+
+ggplot(data = thor, aes(x  = TIMEONTARGET, y = as.factor(MILSERVICE))) +  geom_boxplot() + labs(x = "Time on Target", y = "Military Service", title = "Boxplot of Time on Target vs Military Service") +  theme(plot.title = element_text( hjust = 0.5)) 
+##I tried to factor by cyl, but it kept saying the object was not found. dose did not work either
+```
+
+

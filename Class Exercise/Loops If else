@@ -1,0 +1,258 @@
+#Lesson 12 - Loops, If/Else
+#SE370 20-2
+
+######################################################################
+
+#basic if/else structure
+x <- 10
+
+if (x < 100){
+  print("less than 100")
+} else{
+  print("greater than 100")
+}
+
+#multiple if/else 
+x <- 100
+
+if (x < 100){
+  print("less than 100")
+} else if (x > 100){
+  print("Greater than 100")
+} else {
+  print("equals 100")
+}
+
+#and with nesting...
+x <- 85
+
+if( x < 100){
+  print("less than 100")
+  if(x < 90){
+    print("less than 90")
+    if (x < 80){
+      print("less than  80")
+    }
+  }
+}
+
+
+#What is a loop?
+## a loop is used for a simple and repeatable iteration 
+## repeats a chunk of code until a condition is met 
+
+#Why do we care?
+
+#Lets count from 1 to 10 with a for loop
+for (x in 1:10){
+  print(x)
+}
+
+#now, let's do it as a while loop
+
+a <- 1
+while (a <= 10){
+  print(a)
+  a <- a + 1
+}
+
+a <- 0
+while( a != 10){
+  a <- a + 1
+  print(a)
+}
+
+#note - fear the endless loop!
+i <- 1
+
+
+while(i <= 10){
+  print(i)
+}
+q()
+
+#if statements can be very helpful as well
+#Lets only count evens ---- use an if statement and %%
+
+for( i in 1:10){
+  if( i%%2 == 0){
+    print(i)
+  } 
+}
+
+#Lets only count odds --- if even print "even"
+
+for (x in 1:20){
+  if (x%%2 == 1){
+    print(x)
+  } else {
+    print("issa even")
+  }
+}
+
+
+#now using a little-used function that will be familiar from excel: ifelsef
+for( i in 1:10){
+  ifelse( i%%2 == 0, print("even"),print(i))
+}
+
+#Remember that tailgate model?
+#How long did it take to simulate 1000 times?
+#lets assume that the number of people that show up is a random normal
+#with a mean of 50 and and standard deviation of 10
+#Use the rnorm function to pull an observation
+#use set.seed(123) so everyone gets the same answers
+?rnorm
+set.seed(123)
+#set.seed makes the results predictable? wait what idr
+sim <- round(rnorm(1000,50,10))
+sim
+
+#lets just pretend that we have to loop through to run multiple simulations
+
+#write a 1,000,000 iteration for loop that does the following
+#create a vector named sim that is an empty numeric variable with length 1,000,000
+#write a loop that takes a single draw from the rnorm() function and save it as a varaible called tmp
+#use bracket notation to add the tmp variable to the sim variable in the ith slot
+
+sim <- numeric(length = 1000000) 
+for (i in 1:1000000){
+  tmp <- round(rnorm(n=1,mean = 50, sd = 10))
+  sim[i] <- tmp
+}
+
+sim
+#use boxplot to take a look at the distribution
+
+boxplot(sim)
+
+
+#or hist
+hist(sim)
+
+
+#######Time for a riddle
+# Members of the West High School Band were hard at
+# work practicing for the annual Homecoming Parade.
+# First they tried marching in rows of 12, but Andrew was
+# left by himself to bring up the rear. Then the director
+# told the band members to march in columns of eight,
+# but Andrew was still left to march alone. Even when the
+# band marched in rows of three, Andrew was left out.
+# Finally, in exasperation, Andrew told the band director
+# that they should march in rows of five in order to have
+# all the rows filled. He was right. Given that there were at
+# least 45 musicians on the field but fewer than 200 musicians,
+# how many students were there in the West High
+# School Band?
+
+
+for (x in 45:200){
+  if(x%%12==1){
+    if(x%%8==1){
+      if(x%%3==1){
+        if(x%%5==0){
+          print(x)
+        }
+      }
+    }
+  }
+}
+
+for (x in 45:200){
+  if(x%%12==1 & x%%8==1 & x%%3==1 & x%%5==0){
+    print(x)
+  }
+}
+
+##there were 145 students 
+
+#What if the band could have had 500 people?-- What are the options?
+
+for (x in 45:500){
+  if(x%%12==1){
+    if(x%%8==1){
+      if(x%%3==1){
+        if(x%%5==0){
+          print(x)
+        }
+      }
+    }
+  }
+}
+
+for (x in 45:500){
+  if(x%%12==1 & x%%8==1 & x%%3==1 & x%%5==0){
+    print(x)
+  }
+}
+
+
+#there could have been 145, 265, or 385 people 
+
+
+###stretch exercise - source fivethirtyeight.com
+#In the video game Ã¢â¬ÅRed Dead Redemption 2,Ã¢â¬Â there is a side quest where the main character is 
+#supposed to collect 12 sets of cigarette cards, each consisting of 12 unique cards.
+
+#Some cards can be found lying around in the open world, but the easiest way to collect the cards 
+#is to buy cigarettes at the store and collect the single random card included in each pack. Suppose 
+#Arthur is too lazy to look for cards in the open world and tries to complete the set only by buying 
+#packs at the store.
+
+#At $5 a pack, how much money do we expect Arthur to spend to complete all 12 sets?
+
+#Solve with a simulation!  Here are some tips:
+#1. First, create a vector that is the length of all of the cards you will need to find and make it always have the value FALSE.
+#   This will be our "deck" of cards we have collected.
+#2. Create a loop that draws a card and places it in the deck.
+#3. Run this loop until the deck is full.
+#4. Include a counting variable in your loop so you know how many draws it took to fill the deck.
+#5. Store the total $ spent in a new variable at the end of the process.
+
+deck <- rep(FALSE, 144)
+price <- 0
+x <- 0
+#x is number of iterations
+?sample
+?which
+
+
+while (sample.int(n = 144,size =1) != 144){
+  x <- x + 1
+  sample.int(n = 144,size = 1)
+}
+print(x)
+price = 5*x
+
+#while (x <= 144){
+#  if (runif(1,0,1) == 1){
+#    deck[x] <- "TRUE"
+#    x <- x + 1
+#    y <- y + 1
+#  } 
+#  else {
+#    y <- y + 1 
+#    deck[x] <- "FALSE"
+#  }
+#}
+
+#print(x)
+#print(y)
+
+#Congrats!  You simulated a single iteration of this card-collecting process.  
+
+#6. Now run a simulation (using another loop) to run this game 1000 times, storing the total cost at the end of each run.
+#7. Find the mean and draw a histogram from your results - how much money should it take to get all of the cards?
+#   What are the upper- and lower-end amounts you can expect to pay?
+
+price <- numeric(length = 1000)
+for (i in 1:1000){
+  while (sample.int(n = 144,size =1) != 144){
+    x <- x + 1
+    sample.int(n = 144,size = 1)
+  }
+  price[i] <- 5*x
+  i = i + 1
+}
+hist(price)

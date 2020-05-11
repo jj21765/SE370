@@ -1,0 +1,95 @@
+#---Intro to Webscraping
+#-By: Ian Kloo
+#-March 2020
+
+library(rvest)
+
+#scraping from the web is similar to scraping from a local file...you just have to tell R where to get the HTML
+
+#---reuters scrape
+url <- 'https://www.reuters.com'
+
+#request html from the internet
+page <- read_html(url)
+
+#get the top story
+story <- page %>%
+  html_node('#topStory') %>%
+  html_node('.story-title') %>%
+  html_text(trim = TRUE)
+print(story)
+#get all stories on front page
+stories <- page %>%
+  html_nodes('.story-title') %>%
+  html_text(trim = TRUE)
+print(stories)
+#get links to top stories
+stories <- page %>%
+  html_nodes('.story-title') %>%
+  html_node('a') %>%
+  html_attr('href')
+
+stories <- stories[is.na(stories) == FALSE]
+print(stories)
+#---let's get a table from a website:
+url <- 'https://www.hockey-reference.com/leagues/NHL_2019_games.html'
+
+page <- read_html(url)
+
+table <- page %>%
+  html_table() %>%
+  data.frame()
+print(table)
+#---table scrape with more than one table on page
+url <- 'https://www.hockey-reference.com/leagues/NHL_2019_standings.html'
+
+page <- read_html(url)
+
+table <- page %>%
+  html_node('.stats_table') %>%
+  html_table()
+print(table)
+#why didn't this give us what we wanted?
+#it took the first available table!  need to be more specific
+
+table <- page %>%
+  html_node('#all_standings') %>%
+  html_node('table') %>%
+  html_table()
+print(table)
+
+#---your turn!  get to chillis!!!
+
+#-problem: scrape the appetizers on chillis menu from their website
+
+#-task breakdown:
+#1. Find the url where the appetizers are listed
+#2. Find the relevant css selector to get the appetizer names
+#3. Request the relevant URL with rvest
+#4. Extract the appetizer names!
+
+#1
+url <- 'https://www.chilis.com/menu/appetizers'
+page <- read_html(url)
+#2
+appetizers <- page %>%
+  html_nodes('.item-title') %>%
+  html_text(trim = TRUE)
+#3
+applinks <- page %>%
+  html_nodes('.item-title') %>%
+  html_attr('href')
+applinks <- applinks[is.na(applinks) == FALSE]
+print(applinks)
+#4
+print(appetizers)
+
+#-pro challenge: make a function that scrapes a given menu category (e.g., mains, apps, etc.)
+
+
+
+
+
+
+
+

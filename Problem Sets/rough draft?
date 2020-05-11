@@ -1,0 +1,78 @@
+---
+title: "SE370 PS2"
+output: html_document
+---
+
+```{r }
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+PROBLEM 1
+
+```{r}
+setwd("C:/Users/Lucas/Desktop/ESTHER_SE370")
+teamStats <- read_csv("game_teams_stats.csv")
+teamName <- read_csv("team_info.csv")
+
+team2017 <- teamStats %>%
+  left_join(teamName, by="team_id") %>%
+  filter(game_id > 2017000000)%>%
+  arrange(team_id)%>%
+  mutate(turnover = takeaways - giveaways) %>%
+  mutate(fullTeamname = paste(shortName, teamName)) %>%
+  arrange(team_id)%>%
+  group_by(fullTeamname) %>%
+  summarise(avgTurnover = mean(turnover))
+
+ggplot(data = team2017, mapping = aes(x = reorder(fullTeamname, avgTurnover), y = avgTurnover)) + 
+  geom_bar(stat='identity') + coord_flip() + 
+  theme_minimal() + ggtitle("Teams Winning the Turnover Battle, 2017-2018 Season") + ylab("Average Turnover Differential")+
+  xlab("Team")
+```
+
+PROBLEM 2
+
+```{r}
+skaterStats <- read_csv("game_skater_stats.csv")
+playerInfo <- read_csv("player_info.csv")
+players <- skaterStats %>%
+  left_join(playerInfo, by = "player_id") %>%
+  mutate(hitsPM = hits/timeOnIce) %>%
+  mutate(primaryPosition = recode(primaryPosition, 'C' = 'Center', 'D' = 'Defense', 'LW' = 'Left Wing', 'RW' = 'Right Wing')) %>%
+  group_by(primaryPosition, player_id) %>% 
+  summarise(HPM = mean(hitsPM))
+
+ggplot(data = players, aes(x = HPM)) + geom_histogram() + facet_wrap(~primaryPosition) + ggtitle("Average Hits Per Minute by Position") + theme(plot.title = element_text( hjust = 0.5)) + xlab("Average Hits Per Minute") + ylab("Frequency") + theme_minimal()
+
+```
+
+PROBLEM 3
+
+```{r }
+library(ggradar)
+library(tibble)
+library(scales)
+
+players2 <- skaterStats %>%
+  left_join(playerInfo, by = "player_id")
+
+top6 <- players2 %>%
+  select(lastName, goals, assists, hits, giveaways) %>%
+  filter(str_detect(lastName, "Backstrom")|
+           str_detect(lastName, "Crosby")|
+           str_detect(lastName, "Draisaitl")|
+           str_detect(lastName, "Kessel")|
+           str_detect(lastName, "Malkin")|
+           str_detect(lastName, "McDavid")) %>%
+  group_by(lastName) %>%
+  summarise(Goals = mean(goals), Assists = mean(assists), Hits = mean(hits), Giveaways = mean(giveaways))
+
+topFinal  <- top6 %>%
+  as_tibble(top6) %>%
+  mutate_at(vars(-lastName), rescale) %>%
+  tail(6) %>%
+  select(1:5)
+
+ggradar(topFinal)
+
+```

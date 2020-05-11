@@ -1,6 +1,6 @@
 ---
 title: Practice Graded Lab 2
-author: First Name Last Name
+author: Esther Kang
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
   html_document:
@@ -44,7 +44,8 @@ Write a function that converts pounds to us dollars (1 pound is 1.22 US dollars 
 
 ```{r q6}
 #Write function for q6 here
-
+q6 = function(x){return(x*1.22)}
+q6(13)
 ```
 
 
@@ -59,6 +60,14 @@ Write a function that converts pounds to us dollars (1 pound is 1.22 US dollars 
 flights <- nycflights13::flights
 planes <- nycflights13::planes
 
+?data.frame()
+combined <- merge(x = flights, y = planes) %>%
+  group_by(model) %>%
+  summarise(n = n()) %>%
+  arrange(-n) %>%
+  top_n(10)
+print(combined)
+
 ```
 
 
@@ -71,7 +80,13 @@ From the mtcars data set:
 ```{r}
 mtcars <- datasets::mtcars
 
+mtcarsmpg <- mtcars %>%
+  mutate(wt_mpg = wt/mpg) %>%
+  arrange( -wt_mpg ) %>%
+  select(mpg, hp, wt, wt_mpg) %>%
+  top_n(10) 
 
+print(mtcarsmpg)
 ```
 
 
@@ -87,6 +102,9 @@ knitr::include_graphics('plot_example_practice.png')
 
 ```{r, message = FALSE}
 mtcars <- datasets::mtcars
+library(ggplot2)
+ggplot(data = mtcars, aes(x  = hp, y = as.factor(gear))) + geom_boxplot() + labs(x = "Horsepower", y = "Gear", title = "Boxplot of Horsepower vs Gear") +  theme(plot.title = element_text( hjust = 0.5))
+
 
 ```
 

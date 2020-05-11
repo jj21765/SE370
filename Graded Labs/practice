@@ -1,0 +1,100 @@
+---
+title: Practice Graded Lab 2
+author: First Name Last Name
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    theme: lumen
+---
+
+## Instructions
+This is a PRACTICE graded lab. You will submit this completed markdown in HTML as your final submission (naming convention: Section_LastName_Practice Graded Lab 2.html). If you are unable to knit to HTML, you will submit the R script and recieve a 10% deduction. This is an open resource (not open friend) lab. You may use old work and the internet to complete it. Please change the author tag at the top of this file to your information. 
+
+
+```{r setup, include=FALSE}
+#This block sets up your markdown so that your code will print all nessassary libaries will be loaded. Do NOT change it. 
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+
+if (!require("nycflights13")) install.packages("nycflights13")
+```
+
+## General Questions (50 Points)
+<!-- You answer each questions by placesing in X in the appropriate bracket. Only one answer per question.  -->
+<!-- ### Example Question -->
+<!-- What is your favorite color? -->
+
+<!-- A[X]  Black and Gold   -->
+<!-- B[]   Blue    -->
+<!-- C[]   Red   -->
+<!-- D[]   Green   -->
+<!-- E[]   I'm colorblind     -->
+
+
+### There will be 5 multiple choice questions from the current block here. 
+
+
+## Functional Coding (100 Points)
+
+This portion of the graded lab will assess your ability to write function code blocks, manipulate data, and create basic visualizations.
+
+### Question 6 (Funcations and Loops)
+
+Write a function that converts pounds to us dollars (1 pound is 1.22 US dollars as of 26MAR20). Use this new function to convert 13 pounds to dollars.
+
+```{r q6}
+#Write function for q6 here
+
+```
+
+
+
+### Question 7 (Joins)
+
+1. Join the planes and flights data frames from the nycflights13 package into a single data frame. 
+2. Count how many times certain models showed up in the flights for that year (Hint: count from the dplyr library). Return the top ten
+
+```{r q7}
+#data for q7
+flights <- nycflights13::flights
+planes <- nycflights13::planes
+
+```
+
+
+### Question 8 (Manipulating Data)
+
+From the mtcars data set: 
+1. Build a new variable called 'wt_mpg' that is calculated by dividing wt by mpg. 
+2. Return the ten observations with the highest wt_mpg from a data frame that contains ONLY mpg, hp, wt, and wt_mpg.
+
+```{r}
+mtcars <- datasets::mtcars
+
+
+```
+
+
+### Question 9 (Plotting)
+
+Using the mtcars data, create this plot:
+
+```{r}
+knitr::include_graphics('plot_example_practice.png')
+```
+
+
+
+```{r, message = FALSE}
+mtcars <- datasets::mtcars
+
+```
+
+
+
+
+
+
+
+
+

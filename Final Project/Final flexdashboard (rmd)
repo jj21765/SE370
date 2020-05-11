@@ -1,0 +1,546 @@
+---
+title: "COVID-19 and Starbucks"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: fill
+    storyboard: true
+    theme: paper
+---
+
+```{r setup, include=FALSE}
+# all the libraries we used in this project
+library(flexdashboard)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(lubridate)
+library(dygraphs)
+library(xts)
+library(leaflet)
+library(ggmap)
+library(leaflet.extras)
+library(rgdal)
+library(sf)
+library(raster)
+library(tidytext)
+library(plotly)
+```
+
+COVID-19 In America {.storyboard}
+===================================== 
+    
+### How fast has COVID-19 Spread in America? {data-commentary-width=200}
+
+```{r, include=FALSE}
+#read in the number of world cases from our world in data
+worlddata <- read.csv("worlddata.csv") 
+
+# look at number of US cases.
+worldcase <- worlddata %>%
+  dplyr::select(location, date, total_cases) %>%
+  filter(location == "United States") 
+
+# create a time series so that we can use dy graph
+worldcase$date <- as.Date(worldcase$date) 
+time_series1 <- xts(worldcase, order.by = worldcase$date) 
+```
+
+```{r}
+# creates an interactive dy graph with a range bar
+dygraph(time_series1, 
+        main = "COVID-19 Cases in America",
+        xlab = "Date") %>%
+  dySeries("location", label = "NA") %>%
+  dySeries("date", label = "NA") %>%
+  dySeries("total_cases", label = "Confirmed Cases", color = "red") %>%
+  dyHighlight(highlightCircleSize = 5, 
+              highlightSeriesBackgroundAlpha = 0.2,
+              hideOnMouseOut = FALSE,
+              highlightSeriesOpts = list(strokeWidth = 3)) %>%
+  dyRangeSelector(height = 20) 
+```
+
+*** 
+
+Using data collected from the 31st of January of the 1st of May, we can observe that the number of cases in America has been rapidly growing. It has exhibited exponetial growth. This has caused over 97% of the nation to be under stay-at-home order. The United States has the most confirmed cases of COVID-19 in the world, and this visualization demonstrates its rapid spread across the country. 
+
+### How has COVID-19 affected each respective state? {data-commentary-width=200}
+
+```{r, include = FALSE}
+# load in each respective data set
+covid <- read.csv("us-states.csv")
+geoloc <- read.csv("Geocodes_USA_with_Counties.csv")
+zip <- read.csv("ZIP-COUNTY-FIPS_2010-03.csv")
+fips <- read.csv("StatesFIPSCodes.csv")
+stateloc <- read.csv("states_loc.csv")
+
+# manipulate
+length(covid$cases)
+wash = 0
+for (i in 1:length(covid$cases)){
+  if(covid$state[i] == "California"){wash = wash+1}
+}
+print(wash)
+cases <- covid %>%
+  dplyr::filter(date == "2020-05-01")
+  #group_by(state) %>%
+  #summarise(sum(cases))
+  #dplyr::select(fips,cases,deaths)
+
+fip <- fips %>%
+  mutate("fips"= STATE_FIPS)
+
+statesloc <- stateloc %>%
+  mutate("STUSAB"= ï..state) 
+
+geocode <- fip %>%
+  left_join(cases, by = "fips") 
+
+rona <- geocode %>%
+  left_join(statesloc, by = "STUSAB") %>%
+  drop_na()%>%
+  dplyr::select(name, cases, longitude, latitude,STATE_FIPS)
+
+# create the boundaries necessary for the map
+height <- max(rona$latitude) - min(rona$latitude)
+width <- max(rona$longitude) - min(rona$longitude)
+usboundaries <- c(left = min(rona$longitude)-width *0.05,
+                  right = max(rona$longitude)+width*0.05,
+                  bottom = min(rona$latitude)-height*0.05,
+                  top = max(rona$latitude) + height*0.05)
+usmap <- get_stamenmap(bbox = usboundaries, zoom =6, maptype = 'toner-lite')
+ggmap(usmap)
+
+usprov <- raster::getData('GADM', country = "USA", level = 1)
+raster::plot(usprov)
+
+rona2 <- rona %>% 
+  dplyr::select(longitude,latitude)
+
+rona3 <- SpatialPointsDataFrame(coords=rona2,data=rona,proj4string = CRS(proj4string(usprov)))
+rona <- SpatialPointsDataFrame(coords = rona2, data=rona, proj4string = CRS(proj4string(usprov)))
+usprov@data <- mutate(usprov@data,poly_id = as.numeric(rownames(usprov@data)))
+rona3@data <- mutate(rona3@data,data_id = as.numeric(rownames(rona3@data)))
+rona@data <- mutate(rona@data, data_id = as.numeric(rownames(rona@data)))
+rona4 <- over(rona3,usprov)
+rona5 <- mutate(rona4, data_id = as.numeric(rownames(rona4)))
+rona6 <- left_join(rona3@data,rona5, by = c("data_id" = "data_id"))
+
+rona7 <- rona6 %>%
+  group_by(poly_id, cases) %>%
+  summarise(count = n()) %>%
+  arrange(count) 
+
+usprov@data <-  left_join(usprov@data,rona7)
+bins <- c(0, 10, 50, 100, 150, 200, 500, 1000, Inf)
+pal <- colorBin("YlOrRd", domain = usprov$cases, bins = bins)
+
+labels <- sprintf("<stong>%s</strong><br/>%g Cases",usprov$NAME_1, usprov$cases) %>%
+  lapply(htmltools::HTML)
+```
+
+```{r}
+leaflet() %>%
+  setView(lng = -80.34, lat = 30.63, zoom = 6) %>%
+  #Using THREE different tiles here -- NatGeoWorld, Toner, and TonerLite
+  addProviderTiles("Esri.NatGeoWorldMap", group = "NatGeo") %>%
+  addProviderTiles(providers$Stamen.Toner, group = "Toner") %>%
+  addProviderTiles(providers$Stamen.TonerLite, group = "Toner Lite") %>%
+  #Adding polygons
+  addPolygons(data = usprov,
+              fillColor = ~pal(count),
+              weight = 2,
+              opacity = 1,
+              color = "white",
+              dashArray = "3",
+              fillOpacity = 0.7, 
+              highlight = highlightOptions(
+                weight = 5, 
+                color = "#666",
+                dashArray = "",
+                fillOpacity = 0.7,
+                bringToFront = TRUE),
+              label = labels,
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "15px",
+                direction = "auto")
+  ) %>% 
+  # Layers control, so the user can choose a tile
+  addLayersControl(
+    baseGroups = c("NatGeo", "Toner", "Toner Lite"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+
+```
+
+*** 
+
+This map reflects the number of cases that are in each respective state as of May 1st. While the number of cases in the United States has exhibited an exponential growth since the first reported case in January, not every state has been equally impacted. This map demonstrates these trends. For instance, more rural states have less cases than highly populated ones, such as New York.
+
+### How Deadly is this virus? {data-commentary-width=200}
+
+```{r, include = FALSE}
+# takes the world data dataset and analyzes the number of deaths
+worlddeath <- worlddata %>%
+  dplyr::select(location, date, total_cases, total_deaths) %>%
+  filter(location == "United States")
+
+# makes a time series to analyze death and cases concurrently
+worlddeath$date <- as.Date(worlddeath$date) 
+time_series2 <- xts(worlddeath, order.by = worlddeath$date) 
+```
+
+
+```{r}
+# makes another dy graph for deaths and cases
+dygraph(time_series2, 
+        main = "COVID-19 Deaths in America",
+        xlab = "Date") %>%
+  dySeries("location", label = "NA") %>%
+  dySeries("date", label = "NA") %>%
+  dySeries("total_cases", label = "Confirmed Cases", color = "red") %>%
+  dySeries("total_deaths", label = "Deaths", color = "black") %>%
+  dyHighlight(highlightCircleSize = 5, 
+              highlightSeriesBackgroundAlpha = 0.2,
+              hideOnMouseOut = FALSE,
+              highlightSeriesOpts = list(strokeWidth = 3)) %>%
+  dyRangeSelector(height = 20) 
+```
+
+*** 
+
+Based off the data collected, the first recorded death was on March 1st. From that point there has been a steady increase in the number of deaths caused by COVID-19. 
+
+### How does this translate to each state? {data-commentary-width=200}
+
+```{r, include = FALSE}
+# load in data sets to make another map
+covid2 <- read.csv("us-states.csv")
+geoloc2 <- read.csv("Geocodes_USA_with_Counties.csv")
+zip2 <- read.csv("ZIP-COUNTY-FIPS_2010-03.csv")
+fips2 <- read.csv("StatesFIPSCodes.csv")
+stateloc2 <- read.csv("states_loc.csv")
+
+length(covid2$cases)
+wash = 0
+for (i in 1:length(covid2$cases)){
+  if(covid2$state[i] == "California"){wash = wash+1}
+}
+print(wash)
+cases2 <- covid2 %>%
+  dplyr::filter(date == "2020-05-01")
+  #group_by(state) %>%
+  #summarise(sum(cases))
+  #dplyr::select(fips,cases,deaths)
+
+fip2 <- fips2 %>%
+  mutate("fips"= STATE_FIPS)
+
+statesloc2 <- stateloc2 %>%
+  mutate("STUSAB"= ï..state) 
+
+geocode2 <- fip2 %>%
+  left_join(cases, by = "fips") 
+
+rona2 <- geocode2 %>%
+  left_join(statesloc, by = "STUSAB") %>%
+  drop_na()%>%
+  dplyr::select(name, cases, longitude, latitude,STATE_FIPS, deaths)
+
+height2 <- max(rona2$latitude) - min(rona2$latitude)
+width2 <- max(rona2$longitude) - min(rona2$longitude)
+usboundaries2 <- c(left = min(rona2$longitude)-width *0.05,
+                  right = max(rona2$longitude)+width*0.05,
+                  bottom = min(rona2$latitude)-height*0.05,
+                  top = max(rona2$latitude) + height*0.05)
+usmap2 <- get_stamenmap(bbox = usboundaries, zoom =6, maptype = 'toner-lite')
+#ggmap(usmap2)
+
+usprov2 <- raster::getData('GADM', country = "USA", level = 1)
+#raster::plot(usprov2)
+
+rona3 <- rona2 %>% 
+  dplyr::select(longitude,latitude)
+
+rona4 <- SpatialPointsDataFrame(coords=rona3,data=rona2,proj4string = CRS(proj4string(usprov2)))
+rona2 <- SpatialPointsDataFrame(coords = rona3, data=rona2, proj4string = CRS(proj4string(usprov2)))
+usprov2@data <- mutate(usprov2@data,poly_id = as.numeric(rownames(usprov2@data)))
+rona4@data <- mutate(rona4@data,data_id = as.numeric(rownames(rona4@data)))
+rona2@data <- mutate(rona2@data, data_id = as.numeric(rownames(rona2@data)))
+rona5 <- over(rona4,usprov2)
+rona6 <- mutate(rona5, data_id = as.numeric(rownames(rona5)))
+rona7 <- left_join(rona4@data,rona6, by = c("data_id" = "data_id"))
+
+rona8 <- rona7 %>%
+  group_by(poly_id, cases, deaths) %>%
+  summarise(count = n()) %>%
+  arrange(count) 
+
+usprov2@data <-  left_join(usprov2@data,rona8)
+bins <- c(0, 10, 50, 100, 150, 200, 500, 1000, Inf)
+pal <- colorBin("YlOrRd", domain = usprov2$cases, bins = bins)
+
+
+labels2 <- sprintf("<stong>%s</strong><br/>%g Cases</strong><br/>%g Deaths",usprov2$NAME_1, usprov2$cases, usprov2$deaths) %>%
+  lapply(htmltools::HTML)
+```
+
+```{r, echo = FALSE}
+#bins <- c(0, 10, 20, 50, 100, 200, 500, 1000, Inf)
+#pal <- colorBin("YlOrRd", domain = usprov2$deaths, bins = bins)
+
+#labels <- sprintf("<stong>%s</strong><br/>%g Cases</strong><br/>%g Deaths",usprov2$NAME_1, usprov2$cases, usprov2$deaths) %>%
+#  lapply(htmltools::HTML)
+getwd()
+leaflet() %>%
+  setView(lng = -80.34, lat = 30.63, zoom = 6) %>%
+  addProviderTiles(providers$Stamen.TonerLite, group = "Toner Lite") %>%
+  #Adding polygons
+  addPolygons(data = usprov2,
+              fillColor = ~pal(deaths),
+              weight = 2,
+              opacity = 1,
+              color = "white",
+              dashArray = "3",
+              fillOpacity = 0.7, 
+              highlight = highlightOptions(
+                weight = 5, 
+                color = "#666",
+                dashArray = "",
+                fillOpacity = 0.7,
+                bringToFront = TRUE),
+              label = labels,
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "15px",
+                direction = "auto")
+  ) %>% leaflet::addLegend("bottomright",
+          pal = pal,
+          values = usprov2$deaths,
+          title = "Deaths due to COVID-19",
+          opacity = 1)
+```
+
+*** 
+
+Similar to how the number of cases of COVID-19 is not evenly distributed across the country, so too are the number of deaths associated with this disease. This map exhibits the number of deaths that have been recorded in each state as of May 1st. 
+
+
+Starbucks in the United States {.storyboard}
+=====================================     
+
+### COVID-19's impact on Starbucks locations {data-commentary-width=200}
+    
+```{r, include=FALSE}
+starbuckss <- read_csv("starbucks1.csv")
+starbucks <- starbuckss %>%
+  drop_na()
+
+height <- max(starbucks$Latitude) - min(starbucks$Latitude)
+width <- max(starbucks$Longitude) - min(starbucks$Longitude)
+boundaries <- c(left = min(starbucks$Longitude) - width * .15,
+                right = max(starbucks$Longitude) + width * .15, 
+                bottom = min(starbucks$Latitude) - height * .15,
+                top = max(starbucks$Latitude) + height * .15)
+usmap <- get_stamenmap(bbox = usboundaries, zoom =6, maptype = 'toner-lite')
+```
+    
+    
+```{r}
+labels <- sprintf("<stong>%s</strong><br/>%g Cases</strong><br/>%g Deaths",usprov2$NAME_1, usprov2$cases, usprov2$deaths) %>%
+  lapply(htmltools::HTML)
+leaflet() %>%
+  setView(lng = -80.34, lat = 30.63, zoom = 6) %>%
+  addProviderTiles(providers$Stamen.TonerLite, group = "Toner Lite") %>%
+  #Adding polygons
+  addPolygons(data = usprov2,
+              fillColor = ~pal(deaths),
+              weight = 2,
+              opacity = 1,
+              color = "white",
+              dashArray = "3",
+              fillOpacity = 0.7, 
+              highlight = highlightOptions(
+                weight = 5, 
+                color = "#666",
+                dashArray = "",
+                fillOpacity = 0.7,
+                bringToFront = TRUE),
+              label = labels,
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "15px",
+                direction = "auto")
+  ) %>% leaflet::addLegend("bottomright",
+          pal = pal,
+          values = usprov2$deaths,
+          title = "Deaths due to COVID-19",
+          opacity = 1) %>%
+  addCircleMarkers(data = starbucks,
+                   lng = ~ Longitude,
+                   lat = ~ Latitude,
+                   radius = 2, color = "black",
+                   popup = paste("Location: ",
+                                 starbucks$city))
+
+
+```
+
+***
+This leaflet plot gives us the ability to see where Starbucks locations are relative to the case count and deaths in each state. This allows for us to guage as to how each state stands with regards to how hard it has been hit by COVID-19. 
+
+### Starbucks Locations in the United States {data-commentary-width=200}
+
+```{r, include = FALSE}
+starbuckss1 <- read_csv("starbucks2.csv")
+starbucks1 <- starbuckss1 %>%
+  drop_na()
+
+height <- max(starbucks1$Latitude) - min(starbucks1$Latitude)
+width <- max(starbucks1$Longitude) - min(starbucks1$Longitude)
+boundaries <- c(left = min(starbucks1$Longitude) - width * .15,
+                right = max(starbucks1$Longitude) + width * .15, 
+                bottom = min(starbucks1$Latitude) - height * .15,
+                top = max(starbucks1$Latitude) + height * .15)
+usmap1 <- get_stamenmap(bbox = usboundaries, zoom =6, maptype = 'toner-lite')
+```
+
+
+```{r}
+leaflet() %>%
+  setView(lng = -80.34, lat = 30.63, zoom = 6) %>%
+  #Using THREE different tiles here -- NatGeoWorld, Toner, and TonerLite
+  addProviderTiles("Esri.NatGeoWorldMap", group = "NatGeo") %>%
+  addCircleMarkers(data = starbucks1,
+                   lng = ~ Longitude,
+                   lat = ~ Latitude,
+                   radius = 2,
+                   popup = paste("Location: ", 
+                                starbucks1$city)) 
+ 
+```
+
+***
+This leaftlet plot allows for the user to view specifically where Starbucks locations are, and the city and zip code as to where they are located as well. This allows for the user to understand where Starbucks locations are specifically. This will help to determine how to guage our response to COVID-19.
+
+How Should Starbucks Operate? {.storyboard}
+===================================== 
+
+### Restaurant Restrictions {data-commentary-width=200}
+```{r, include=FALSE}
+state_df <- read_csv("textmine.csv")
+
+state_token <- state_df %>%
+  unnest_tokens(word, `Stay at Home Order`) %>%
+  mutate(source = "restrictions")
+
+state_fre3 <- state_token %>%
+  anti_join(stop_words) %>%
+  count(word, Location , sort = TRUE) %>%
+  mutate(word_count = sum(n)) %>%
+  ungroup() %>%
+  arrange(-word_count) %>%
+  mutate(rank = group_indices(.,factor(word, levels = unique(word)))) %>%
+  filter(rank <= 25) %>%
+  filter(word == "statewide" |
+         word == "rolled" |
+         word == "lifted" |
+         word == "risk")
+
+```
+
+```{r}
+#plot the frequencies of state words
+ggplot(state_fre3, aes(reorder(word, rank), n, fill = Location)) +
+  geom_col() +
+  theme(legend.text = element_text(size = 6), legend.position = "bottom") +
+  ylab("State") +
+  xlab("Level of Restriction") +
+  coord_flip() +
+  ggtitle("Locked States") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme_minimal()
+```
+
+*** 
+
+This chart gives a visual representation of the states that have released official guidance with regards to restaurant restrictions. "Statewide" represents the state still having strict restrictions with regards to restaurant operations (those being restricted to just takeout); "rolled" represents a rolling out of restaurant openings; "risk" represents that there are restrictions for groups that are at high risk to COVID-19; and "lifted" representing states that have allowed for restaurants to be open and to serve at a limited capacity. 
+
+### Tabular Representation of Statewide Restaurant Restrictions {data-commentary-width=200}
+       
+```{r, include = FALSE}
+
+
+state_fre2 <- state_token %>%
+  anti_join(stop_words) %>%
+  count(word, Location , sort = TRUE) %>%
+  mutate(word_count = sum(n)) %>%
+  ungroup() %>%
+  arrange(-word_count) %>%
+  mutate(rank = group_indices(.,factor(word, levels = unique(word)))) %>%
+  filter(rank <= 25) %>%
+  filter(Location != "United States") %>%
+  select(word, Location) %>%
+  rename(Restrictions = word)
+```
+
+```{r}
+fig <- plot_ly(
+  type = 'table',
+  header = list(
+    values = c("<b>States</b>", names(state_fre2)),
+  align = c('left', rep('center', ncol(state_fre2))),
+  line = list(width = 1, color = 'black'),
+  #fill = list(color = 'rgb(135, 100, 230)'),
+  font = list(family = "Times New Roman", size = 14, color = "black")
+  ),
+  cells = list(
+    values = rbind(
+      rownames(state_fre2), 
+      t(as.matrix(unname(state_fre2)))
+    ),
+    align = c('left', rep('center', ncol(state_fre2))),
+    line = list(color = "black", width = 1),
+    #fill = list(color = c('rgb(135, 193, 238)', 'rgba(128, 222, 249, 0.65)')),
+    font = list(family = "Times New Roman", size = 12, color = c("black"))
+  ))
+
+fig
+
+```
+
+*** 
+
+An understanding of which states currently have restrictions with regards to restaurant openings should guide future Starbucks operations. Starbucks locatiions in states that have statewide restrictions of restaurant openings should remain closed. In States that have rolling and risk restrictions Starbucks should be at takeout only. In states where restrictions have been lifted, Starbucks should be open. A subsequent change in the level of restriction held by the state will determine whether Starbucks' level of operations in that state should change or not. 
+
+
+
+
+   Works Cited {.tabset .tabset-fade}
+===================================== 
+
+ Row {.tabset .tabset-fade}
+-------------------------------------
+   
+### Sources Used for this flexdashboard
+1. flexdashboard For R (Flexdashboard: Easy interactive dashboards for R - RStudio. (2020). Retrieved May 5, 2020, from https://rmarkdown.rstudio.com/flexdashboard/index.html) 
+Assistance Given to the authors: source code and examples. This website laid out the fundamentals of how to use flexdashboard, which gave us the ability to use those fundamentals and examples to create our own project. West Point, NY.
+
+2. dygraphs for R (Dygraphs for R - GitHub. (2020). Retrieved May 5, 2020, from https://rstudio.github.io/dygraphs/) Assistance Given to the authors: Visulatization examples. We used this visualization to assist in creating an interactive chart of COVID-19 over a period of time. West Point, NY.
+
+3. Plotly R Open Source Graphing Library (Plotly R Graphing Library. (2020). Retrieved May 05, 2020, from https://plotly.com/r/) Assistance given to the authors: visualization examples. To try and successfully plot a table that lists which states are on restaurant lock down or not, we utilized plotly to give a visual representation to which one can interact with. West Point, NY.
+
+### Data Sets Utilized
+1. FIPS State Codes - dataset by uscensusbureau. (2017, February 23). Retrieved May 05, 2020, from https://data.world/uscensusbureau/fips-state-codes/workspace/file?filename=state.txt
+
+2. Kohn, D. (n.d.). 8902 locations of US Starbucks with addresses, latitude, and longitude. Retrieved May 05, 2020, from https://gist.github.com/dankohn/09e5446feb4a8faea24f
+
+3. Roser, M., Ritchie, H., Oritz-Ospina, E., &amp; Hasell, J. (2020, May 01). Coronavirus Pandemic (COVID-19) - Statistics and Research ... Retrieved May 5, 2020, from https://ourworldindata.org/coronavirus
+
+4. States.csv &nbsp;|&nbsp; Dataset Publishing Language &nbsp;|&nbsp; Google Developers. (2012, January 20). Retrieved May 05, 2020, from https://developers.google.com/public-data/docs/canonical/states_csv
+
+5. State Data and Policy Actions to Address Coronavirus. (2020, May 01). Retrieved May 05, 2020, from https://www.kff.org/health-costs/issue-brief/state-data-and-policy-actions-to-address-coronavirus/
+
+

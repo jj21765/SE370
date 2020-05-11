@@ -1,0 +1,98 @@
+---
+title: 'Lesson 21: Cleaning Data'
+author: "Esther Kang"
+output: html_document
+---
+
+## Reading in the data
+
+Read in the data `flight_data_start.csv` below:
+
+```{r, warning = FALSE, message = FALSE}
+library(tidyr)
+library(dplyr)
+fdata <- read.csv('flight_data_start.csv', stringsAsFactors = FALSE)
+```
+
+
+Print the first 10 rows and first 5 columns of your data:
+
+```{r}
+fdata[1:10, 1:5]
+```
+
+This data shows the number of flights between origin cities (left-most column) and destiation cities (other columns) for specific dates.  
+
+ANSWER BELOW:
+
+Is this wide or long data?
+Wide Data
+
+## Cleaning data
+
+There are missing values in the date field.  Find them and fix them by coding them as NA.
+
+```{r}
+unique(fdata$date)
+```
+
+```{r}
+fdata <- fdata%>%
+  mutate(date=ifelse(date %in% c('NONE', 'NOT_SURE'), NA, date))
+
+unique(fdata$date)
+```
+
+Drop the NA values ONLY FOR DATES!
+```{r}
+fdata <- fdata %>%
+  drop_na(date)
+```
+
+There are duplicate rows, remove them:
+
+```{r}
+fdata <- fdata%>%
+  distinct()
+
+2921 - 2628
+```
+
+How many duplicates were there?
+293 duplicates removed
+
+
+
+## Tidying data
+
+Make the data by using either pivot_wider() or pivot_longer() (whichever is appropriate).  Create a new value column called num_flights:
+
+```{r}
+long <- fdata%>%
+  pivot_longer(col = Albany.NY:Wichita.KS, names_to = 'city', values_to = 'num_flight')
+
+long
+```
+
+Drop all rows where num_flights is NA:
+
+```{r}
+long <- long %>%
+  drop_na(num_flight)
+```
+
+
+Break the origin into origin_city and origin_state:
+
+```{r}
+long <- long %>%
+  separate(origin, c('origin_city', 'origin_state'), sep = ' , ') %>%
+  separate(city, c('dest_city', 'dest_state'), sep = '.')
+```
+
+Print the first 10 rows of your final data structure:
+
+```{r}
+long[1:10, ]
+```
+

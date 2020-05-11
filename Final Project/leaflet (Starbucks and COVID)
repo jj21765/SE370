@@ -1,0 +1,124 @@
+getwd()
+setwd("C:/Users/Lucas/Downloads")
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(ggmap)
+covid <- read.csv("counties.csv")
+geoloc <- read.csv("Geocodes_USA_with_Counties.csv")
+zip <- read.csv("ZIP-COUNTY-FIPS_2010-03.csv")
+
+covid1 <- covid %>%
+  dplyr::select(fips,cases,deaths)
+
+zipp <- zip%>%
+  mutate("zip" = ZIP)
+geolocs <- geoloc %>%
+  mutate("zip" = ï..zip) %>%
+  dplyr::select(zip,latitude,longitude,county) %>%
+  na_if("") %>%
+  drop_na()
+geolocc <- distinct(geolocs,county,.keep_all = TRUE)
+geocode <- geolocc %>%
+  left_join(zipp, by = "zip") %>%
+  dplyr::select(latitude,longitude,zip,STCOUNTYFP,county)%>%
+  mutate("fips"=STCOUNTYFP)
+  
+rona <- covid1 %>%
+  left_join(geocode, by = "fips")%>%
+  drop_na()
+
+#--------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------
+library(leaflet)
+library(tidyverse)
+library(ggmap)
+library(leaflet.extras)
+library(rgdal)
+library(sf)
+library(raster)
+library(usmap)
+library(maps)
+
+star <- read.csv("starbucks1.csv")
+starr <- star %>%
+  na_if(" ")%>%
+  drop_na()
+
+map(database='county')
+points(x=starr$ï..Longitude,y=starr$Latitude,pch=19,col='red')
+
+
+height <- max(rona$latitude) - min(rona$latitude)
+width <- max(rona$longitude) - min(rona$longitude)
+usboundaries <- c(left = min(rona$longitude)-width *0.05,
+                   right = max(rona$longitude)+width*0.05,
+                   bottom = min(rona$latitude)-height*0.05,
+                   top = max(rona$latitude) + height*0.05)
+
+usprov <- raster::getData('GADM', country = "USA", level = 1)
+raster::plot(usprov)
+
+rona2 <- rona %>% 
+  dplyr::select(longitude,latitude)
+
+rona3 <- SpatialPointsDataFrame(coords=rona2,data=rona,proj4string = CRS(proj4string(usprov)))
+rona <- SpatialPointsDataFrame(coords = rona2, data=rona, proj4string = CRS(proj4string(usprov)))
+usprov@data <- mutate(usprov@data,poly_id = as.numeric(rownames(usprov@data)))
+rona3@data <- mutate(rona3@data,data_id = as.numeric(rownames(rona3@data)))
+rona@data <- mutate(rona@data, data_id = as.numeric(rownames(rona@data)))
+rona4 <- over(rona3,usprov)
+rona5 <- mutate(rona4, data_id = as.numeric(rownames(rona4)))
+rona6 <- left_join(rona3@data,rona5, by = c("data_id" = "data_id"))
+
+rona7 <- rona6 %>%
+  group_by(poly_id) %>%
+  summarise(count = n()) %>%
+  arrange(count) 
+
+usprov@data <-  left_join(usprov@data,rona7)
+bins <- c(0, 10, 50, 100, 150, 200, 500, 1000, Inf)
+pal <- colorBin("YlOrRd", domain = usprov$count, bins = bins)
+leaflet() %>%
+  setView(lng = -80.34,lat = 30.63, zoom = 6) %>%
+  addPolygons(data = usprov, fillColor = ~pal(count),
+              weight = 1, 
+              opacity = 1,
+              color = "white",
+              dashArray = "3", 
+              fillOpacity = 0.7)
+
+labels <- sprintf("<stong>%s</strong><br/>%g Cases",usprov$NAME_1, usprov$count) %>%
+  lapply(htmltools::HTML)
+leaflet() %>%
+  setView(lng = -80.34, lat = 30.63, zoom = 6) %>%
+  #Using THREE different tiles here -- NatGeoWorld, Toner, and TonerLite
+  addProviderTiles("Esri.NatGeoWorldMap", group = "NatGeo") %>%
+  addProviderTiles(providers$Stamen.Toner, group = "Toner") %>%
+  addProviderTiles(providers$Stamen.TonerLite, group = "Toner Lite") %>%
+  #Adding polygons
+  addPolygons(data = usprov,
+              fillColor = ~pal(count),
+              weight = 2,
+              opacity = 1,
+              color = "white",
+              dashArray = "3",
+              fillOpacity = 0.7, 
+              highlight = highlightOptions(
+                weight = 5, 
+                color = "#666",
+                dashArray = "",
+                fillOpacity = 0.7,
+                bringToFront = TRUE),
+              label = labels,
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px"),
+                textsize = "15px",
+                direction = "auto")
+  ) %>% 
+  # Layers control, so the user can choose a tile
+  addLayersControl(
+    baseGroups = c("NatGeo", "Toner", "Toner Lite"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+
